@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eternal Bonds - Live Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #fce4ec 0%, #f3e5f5 100%);
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+        }
+        .chat-container {
+            height: calc(100vh - 180px);
+            scrollbar-width: thin;
+            scrollbar-color: #e1bee7 transparent;
+        }
+        .chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-container::-webkit-scrollbar-thumb {
+            background-color: #e1bee7;
+            border-radius: 10px;
+        }
+        .message-mine {
+            background: linear-gradient(135deg, #ec407a 0%, #d81b60 100%);
+            color: white;
+            border-radius: 20px 20px 4px 20px;
+            align-self: flex-end;
+        }
+        .message-theirs {
+            background: white;
+            color: #444;
+            border-radius: 20px 20px 20px 4px;
+            align-self: flex-start;
+        }
+        .premium-shadow {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        .hidden-screen {
+            display: none !important;
+        }
+        .animate-msg {
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+
+    <!-- Login Selection Screen -->
+    <div id="login-screen" class="glass p-8 rounded-3xl w-full max-w-md text-center premium-shadow">
+        <h1 class="font-['Playfair_Display'] text-4xl mb-2 text-pink-600">Eternal Bonds</h1>
+        <p class="text-gray-500 mb-8 italic">Choose your identity to enter your world</p>
+        
+        <div class="space-y-4">
+            <button id="login-king" class="w-full py-4 bg-pink-500 text-white rounded-2xl font-semibold hover:bg-pink-600 transition-all transform hover:scale-[1.02]">
+                👑 Login as King (You)
+            </button>
+            <button id="login-queen" class="w-full py-4 border-2 border-pink-400 text-pink-600 rounded-2xl font-semibold hover:bg-pink-50 transition-all transform hover:scale-[1.02]">
+                👸 Login as Queen (GF)
+            </button>
+        </div>
+        <div id="config-warning" class="mt-6 p-3 bg-yellow-100 text-yellow-800 text-xs rounded-lg hidden">
+            Dhyan dein: Firebase config fill karna zaroori hai code mein.
+        </div>
+        <p id="auth-status" class="mt-4 text-xs text-gray-400">GitHub Live Ready...</p>
+    </div>
+
+    <!-- Main Chat Screen -->
+    <div id="chat-screen" class="glass w-full max-w-2xl h-[90vh] rounded-[2rem] flex flex-col premium-shadow hidden-screen overflow-hidden">
+        <!-- Header -->
+        <div class="p-6 border-b border-white/50 flex justify-between items-center bg-white/30">
+            <div class="flex items-center space-x-4">
+                <div id="avatar" class="w-12 h-12 rounded-full bg-pink-200 flex items-center justify-center text-2xl shadow-inner">
+                    💖
+                </div>
+                <div>
+                    <h2 id="user-display-name" class="font-bold text-gray-800 text-lg">My Love</h2>
+                    <span class="text-xs text-green-500 flex items-center">
+                        <span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span> Live on GitHub
+                    </span>
+                </div>
+            </div>
+            <button onclick="location.reload()" class="text-gray-400 hover:text-pink-500 text-sm font-medium">
+                Logout
+            </button>
+        </div>
+
+        <!-- Messages Area -->
+        <div id="chat-box" class="chat-container flex-1 p-6 overflow-y-auto flex flex-col space-y-4">
+            <div class="text-center text-xs text-gray-400 my-4">Connecting to secure servers...</div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="p-6 bg-white/40 border-t border-white/50">
+            <form id="chat-form" class="flex items-center space-x-3">
+                <input type="text" id="msg-input" autocomplete="off" placeholder="Write something sweet..." 
+                    class="flex-1 bg-white/80 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-pink-300 outline-none transition-all">
+                <button type="submit" class="bg-pink-500 text-white p-4 rounded-2xl hover:bg-pink-600 transition-all shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // IMPORTANT: GitHub pe chalane ke liye yahan apni Firebase details bharein
+        // Firebase Console -> Project Settings -> General -> Your Apps (Web)
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Warning if default values are present
+        if(firebaseConfig.apiKey === "YOUR_API_KEY") {
+            document.getElementById('config-warning').classList.remove('hidden');
+        }
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'github-couple-chat-v2';
+
+        let currentUser = null;
+        let role = "";
+
+        const loginScreen = document.getElementById('login-screen');
+        const chatScreen = document.getElementById('chat-screen');
+        const chatBox = document.getElementById('chat-box');
+        const chatForm = document.getElementById('chat-form');
+        const msgInput = document.getElementById('msg-input');
+        const userDisplayName = document.getElementById('user-display-name');
+        const avatarDiv = document.getElementById('avatar');
+        const authStatus = document.getElementById('auth-status');
+
+        async function authenticateUser() {
+            try {
+                await signInAnonymously(auth);
+            } catch (error) {
+                console.error("Auth Error:", error);
+                authStatus.innerText = "Error: Config check karein.";
+            }
+        }
+
+        document.getElementById('login-king').addEventListener('click', () => {
+            role = "King";
+            authenticateUser();
+        });
+
+        document.getElementById('login-queen').addEventListener('click', () => {
+            role = "Queen";
+            authenticateUser();
+        });
+
+        onAuthStateChanged(auth, (user) => {
+            if (user && role) {
+                currentUser = user;
+                startChat();
+            }
+        });
+
+        function startChat() {
+            loginScreen.classList.add('hidden-screen');
+            chatScreen.classList.remove('hidden-screen');
+            userDisplayName.innerText = role === 'King' ? "King's Queen" : "Queen's King";
+            avatarDiv.innerText = role === 'King' ? '🤴' : '👸';
+
+            const messagesRef = collection(db, 'artifacts', appId, 'public', 'data', 'messages');
+            const q = query(messagesRef);
+
+            onSnapshot(q, (snapshot) => {
+                const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                docs.sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
+                renderMessages(docs);
+            }, (error) => {
+                console.error("Firestore error:", error);
+            });
+        }
+
+        function renderMessages(messages) {
+            chatBox.innerHTML = '<div class="text-center text-[10px] text-gray-400 my-4 uppercase tracking-widest italic">Humari Chhoti si Duniya</div>';
+            messages.forEach(msg => {
+                const isMine = msg.senderRole === role;
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `flex ${isMine ? 'justify-end' : 'justify-start'} animate-msg`;
+                const innerDiv = document.createElement('div');
+                innerDiv.className = `max-w-[80%] p-4 premium-shadow ${isMine ? 'message-mine' : 'message-theirs'}`;
+                const timeStr = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '...';
+                innerDiv.innerHTML = `<p class="text-sm font-medium">${msg.text}</p><span class="text-[10px] opacity-60 block text-right mt-1">${timeStr}</span>`;
+                msgDiv.appendChild(innerDiv);
+                chatBox.appendChild(msgDiv);
+            });
+            chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+        }
+
+        chatForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const text = msgInput.value.trim();
+            if (!text || !currentUser) return;
+            msgInput.value = "";
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), {
+                    text: text,
+                    senderRole: role,
+                    senderUid: currentUser.uid,
+                    timestamp: serverTimestamp()
+                });
+            } catch (err) { console.error("Send failed:", err); }
+        };
+    </script>
+</body>
+</html>
